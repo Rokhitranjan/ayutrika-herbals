@@ -1,0 +1,312 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  phone     String?
+  role      String    @default("customer") // customer, admin
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  orders    Order[]
+  reviews   Review[]
+  addresses Address[]
+  cart      Cart?
+  wishlist  Wishlist?
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName     String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String   @default("India")
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?    @unique
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?    @unique
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Wishlist {
+  id         String   @id @default(cuid())
+  userId     String?  @unique
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId  String?  @unique
+  productIds String[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  email     String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  displayOrder Int      @default(0)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id              String      @id @default(cuid())
+  name            String
+  slug            String      @unique
+  sku             String      @unique
+  categoryId      String
+  category        Category    @relation(fields: [categoryId], references: [id])
+  subcategory     String?
+  price           Float
+  originalPrice   Float?
+  discount        Float?
+  stock           Int         @default(0)
+  shortDesc       String
+  fullDesc        String
+  images          String[]    // Array of image URLs
+  thumbnail       String?
+  ingredients     String[]    // List of active botanical herbs
+  benefits        String[]    // List of core wellness benefits
+  howToUse        String?
+  dosage          String?
+  storage         String?
+  weight          String?
+  dimensions      String?
+  productType     String?     // Powder, Tea, Oil, Capsule, Elixir
+  tags            String[]
+  seoTitle        String?
+  seoDescription  String?
+  seoKeywords     String[]
+  isFeatured      Boolean     @default(false)
+  isBestSeller    Boolean     @default(false)
+  isNewArrival    Boolean     @default(false)
+  isActive        Boolean     @default(true)
+  rating          Float       @default(4.9)
+  reviewCount     Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  reviews         Review[]
+  orderItems      OrderItem[]
+  cartItems       CartItem[]
+}
+
+model Ingredient {
+  id             String   @id @default(cuid())
+  name           String
+  botanicalName  String
+  slug           String   @unique
+  image          String
+  description    String
+  traditionalUse String
+  benefits       String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Benefit {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String
+  icon        String?
+  tag         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id                      String      @id @default(cuid())
+  orderNumber             String      @unique // e.g. AYU-2026-000001
+  userId                  String?
+  user                    User?       @relation(fields: [userId], references: [id])
+  customerName            String
+  customerEmail           String
+  customerPhone           String
+  shippingAddress         Json        // Street, City, State, Pincode, Country
+  shippingAddressSnapshot Json?       // Immutable snapshot of address at purchase
+  items                   OrderItem[]
+  subtotal                Float
+  discount                Float       @default(0)
+  shippingFee             Float       @default(0)
+  shippingAmount          Float       @default(0)
+  tax                     Float       @default(0)
+  taxAmount               Float       @default(0)
+  total                   Float
+  totalAmount             Float       @default(0)
+  currency                String      @default("INR")
+  couponCode              String?
+  paymentMethod           String      // Razorpay, UPI, Card, NetBanking, COD
+  paymentStatus           String      @default("PENDING") // PENDING, AUTHORIZED, PAID, FAILED, REFUNDED, PARTIALLY_REFUNDED
+  paymentId               String?
+  orderStatus             String      @default("PENDING") // PENDING, CONFIRMED, PROCESSING, PACKED, SHIPPED, OUT_FOR_DELIVERY, DELIVERED, CANCELLED, RETURN_REQUESTED, RETURNED, REFUNDED
+  status                  String      @default("PENDING")
+  trackingNumber          String?
+  trackingUrl             String?
+  notes                   String?
+  timeline                Json?       // [{ status, timestamp, note }]
+  payments                Payment[]
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+}
+
+model OrderItem {
+  id                  String   @id @default(cuid())
+  orderId             String
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId           String
+  product             Product  @relation(fields: [productId], references: [id])
+  productName         String
+  productNameSnapshot String?  // Immutable snapshot of product name
+  skuSnapshot         String?  // Immutable snapshot of SKU
+  priceSnapshot       Float?   // Immutable snapshot of unit price
+  productImage        String?
+  price               Float
+  quantity            Int
+  subtotal            Float    @default(0)
+  total               Float
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider          String   // razorpay, cod, manual
+  providerOrderId   String?
+  providerPaymentId String?
+  amount            Float
+  currency          String   @default("INR")
+  status            String   @default("PENDING") // PENDING, AUTHORIZED, PAID, FAILED, REFUNDED
+  signatureVerified Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Review {
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  customerName String
+  rating       Int      @default(5)
+  title        String
+  comment      String
+  verified     Boolean  @default(true)
+  approved     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discountType  String    // percentage, fixed
+  discountValue Float
+  minOrderValue Float     @default(0)
+  maxDiscount   Float?
+  expiresAt     DateTime?
+  isActive      Boolean   @default(true)
+  usageCount    Int       @default(0)
+  createdAt     DateTime  @default(now())
+}
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String
+  content     String
+  coverImage  String
+  author      String   @default("Ayutrika Botanical Circle")
+  category    String
+  tags        String[]
+  readingTime String   @default("5 min read")
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  location  String
+  quote     String
+  rating    Int      @default(5)
+  verified  Boolean  @default(true)
+  product   String?
+  createdAt DateTime @default(now())
+}
+
+model BrandSettings {
+  id                String   @id @default("default")
+  brandName         String   @default("Ayutrika Herbals")
+  tagline           String   @default("[OFFICIAL AYUTRIKA HERBALS TAGLINE]")
+  brandDescription  String   @default("Ayutrika Herbals is a premium herbal wellness brand offering thoughtfully presented botanical and natural products inspired by the richness of nature.")
+  brandStory        String   @default("OUR STORY\n\n[OFFICIAL AYUTRIKA HERBALS BRAND STORY]\n\nReplace this content with the company's official story, founder information, heritage, philosophy and journey.")
+  brandPhilosophy   String   @default("ROOTED IN NATURE. REFINED FOR MODERN WELLNESS.\n\n[OFFICIAL AYUTRIKA HERBALS PHILOSOPHY]\n\nOur philosophy, sourcing principles, quality standards and approach to herbal wellness will be presented here.")
+  contactEmail      String   @default("[OFFICIAL EMAIL]")
+  contactPhone      String   @default("[OFFICIAL PHONE NUMBER]")
+  contactWhatsApp   String   @default("[OFFICIAL WHATSAPP]")
+  businessAddress   String   @default("[OFFICIAL BUSINESS ADDRESS]")
+  gstNumber         String   @default("[OFFICIAL GST INFORMATION]")
+  certifications    String   @default("[OFFICIAL CERTIFICATION INFORMATION]")
+  instagramUrl      String   @default("[OFFICIAL INSTAGRAM]")
+  facebookUrl       String   @default("[OFFICIAL FACEBOOK]")
+  youtubeUrl        String   @default("[OFFICIAL YOUTUBE]")
+  linkedinUrl       String   @default("[OFFICIAL LINKEDIN]")
+  primaryColor      String   @default("#10261C")
+  secondaryColor    String   @default("#1D4635")
+  accentColor       String   @default("#C9A96A")
+  backgroundColor   String   @default("#F7F3EA")
+  footerText        String   @default("Ayutrika Herbals — Pure botanical formulations crafted for modern wellness rituals.")
+  copyrightText     String   @default("© 2026 Ayutrika Herbals. All rights reserved.")
+  heroTitle         String   @default("PURE NATURE. REFINED FOR YOU.")
+  heroSubtitle      String   @default("Premium Herbal Wellness Rooted in Nature. Crafted with Care.")
+  heroCtaText       String   @default("EXPLORE COLLECTION")
+  heroCtaLink       String   @default("/shop")
+  heroImage         String   @default("https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&w=1920&q=85")
+  updatedAt         DateTime @updatedAt
+}
