@@ -1,0 +1,1 @@
+# Ayutrika Herbals Static Assets
