@@ -51,3 +51,6 @@ next-env.d.ts
 *.key
 *.cert
 credentials.json
+
+.vercel
+.env*
